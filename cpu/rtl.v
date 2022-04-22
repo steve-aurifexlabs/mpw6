@@ -14,7 +14,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 
+`default_nettype none
+
 module rvref(
+`ifdef USE_POWER_PINS
+    inout vccd1,	// User area 1 1.8V supply
+    inout vssd1,	// User area 1 digital ground
+`endif
+
 	input clk,
 	input rst,
 	output [31:0] address,

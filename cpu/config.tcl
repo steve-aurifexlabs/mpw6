@@ -22,21 +22,21 @@ set ::env(DESIGN_NAME) rvref
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/rtl.v"
+	$script_dir/../../verilog/rtl/cpu/rtl.v"
 
 set ::env(DESIGN_IS_CORE) 0
 
 set ::env(CLOCK_PORT) "clk"
 set ::env(CLOCK_NET) "rvref.clk"
-set ::env(CLOCK_PERIOD) "10"
+set ::env(CLOCK_PERIOD) "20"
 
 set ::env(FP_SIZING) absolute
-set ::env(DIE_AREA) "0 0 1000 1000"
+set ::env(DIE_AREA) "0 0 500 500"
 
 set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
 #set ::env(PL_BASIC_PLACEMENT) 1
-set ::env(PL_TARGET_DENSITY) 0.25
+set ::env(PL_TARGET_DENSITY) 0.45
 
 
 # Maximum layer used for routing is metal 4.
