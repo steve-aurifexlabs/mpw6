@@ -36,7 +36,7 @@ set ::env(DIE_AREA) "0 0 400 400"
 set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
 set ::env(PL_BASIC_PLACEMENT) 1
-set ::env(PL_TARGET_DENSITY) 0.05
+set ::env(PL_TARGET_DENSITY) 0.45
 
 
 # Maximum layer used for routing is metal 4.
