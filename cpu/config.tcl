@@ -22,7 +22,7 @@ set ::env(DESIGN_NAME) rvref
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/cpu.v"
+	$script_dir/cpu/rtl.v"
 
 set ::env(DESIGN_IS_CORE) 0
 
