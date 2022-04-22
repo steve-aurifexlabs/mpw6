@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: 2020 Efabless Corporation
+ * SPDX-FileCopyrightText: 2022 Steve Goldsmith, Aurifex Labs LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,26 +19,104 @@
 #include <defs.h>
 #include <stub.c>
 
-
 int clk = 0;
-int i;
 
-void main()
-{
-        /* Set up the housekeeping SPI to be connected internally so	*/
-	/* that external pin changes don't affect it.			*/
+void main() {
+	boot();
+	test();
+}
 
-	// reg_spimaster_config = 0xa002;	// Enable, prescaler = 2,
+void test() {
+	const int EBREAK = 0x00100073;
+	const int ECALL = 0x00000073;
+
+	const int romSize = 256;
+	const int romAddress = 0x00000400;
+	const int[romSize] rom = [
+		// addi r1, r0, 65
+	        0x02100093,  // addi r1, r0, 65
+
+		// assert r1 == 65
+	        0x02100f93,  // addi r31, r0, 65
+	        0x001f8463,  // beq r1, r31, 4
+	        0x00000f93,  // addi r31, r0, 5000
+	        EBREAK,  // ebreak
+
+		// end of program
+	        0x00000f93,  // addi r31, r0, 2000
+	        ECALL,  // ecall
+	];
+
+	const int ramSize = 256;
+	const int ramAddress = 0x00000800;
+	int[ramSize] ram;
+
+	int address;
+	int dataIn;
+	int transactionBegin;
+	int writeEnable;
+	int writeMask;
+
+	int dataOut;
+	int transactionEnd;
+
+	int instructionFetch = 0;
+
+        while (1){
+		stepMemoryEmulator()
+	}
+}
+
+void stepMemoryEmulator() {
+	// toggle clk 1 full cycle
+	clk = !clk;
+	reg_la3_data = (reg_la3_data & 0x3fffffff) | (clk << 31 & 0xc0000000);
+	clk = !clk;
+	reg_la3_data = (reg_la3_data & 0x3fffffff) | (clk << 31 & 0xc0000000);
+
+	// DELAY
+        for (i=0; i<5; i=i+1) {}
+
+	// read signals
+	address = reg_la0_data_in;
+	dataIn = reg_la1_data_in;
+	transactionBegin = reg_la2_data_in & 0x1;
+	writeEnable = reg_la2_data_in >> 1 & 0x1;
+	writeMask = reg_la2_data_in >> 2 & 0xf;
+
+	if(transactionBegin) {
+		instructionFetch = address >= romAddress && address < romAddress + romSize;
+		if(instructionFetch) {
+			dataout = rom[address - romAddress];
+		}
+		else if(address >= ramAddress && address < ramAddress + ramSize) {
+			if(writeEnable) {
+				ram[address - ramAddress] = (writeMask & 0x8) ? dataIn & 0xff000000 : 0 |
+				(writeMask & 0x4) ? dataIn & 0x00ff0000 : 0 |
+				(writeMask & 0x2) ? dataIn & 0x0000ff00 : 0 |
+				(writeMask & 0x1) ? dataIn & 0x000000ff : 0;
+			else {
+				dataOut = ram[address - ramAddress];
+			}
+		}
+		transactionEnd = 1;
+
+		if(instructionFetch && dataOut == EBREAK) {
+			fail(address);
+                	break;
+		}
+		if(instructionFetch && dataOut == ECALL) {
+			pass(address);
+                	break;
+		}
+
+                reg_la0_data = dataOut;
+                reg_la1_data = transactionEnd;
+        }
+}
+
+void boot() {
         reg_spi_enable = 1;
-                                        // connect to housekeeping SPI
-
-	// Connect the housekeeping SPI to the SPI master
-	// so that the CSB line is not left floating.  This allows
-	// all of the GPIO pins to be used for user functions.
-
-
-	// All GPIO pins are configured to be output
-	// Used to flad the start/end of a test 
 
         reg_mprj_io_31 = GPIO_MODE_MGMT_STD_OUTPUT;
         reg_mprj_io_30 = GPIO_MODE_MGMT_STD_OUTPUT;
@@ -73,121 +151,42 @@ void main()
         reg_mprj_io_1  = GPIO_MODE_USER_STD_OUTPUT;
         reg_mprj_io_0  = GPIO_MODE_USER_STD_OUTPUT;
 
-        /* Apply configuration */
+        // Apply configuration
         reg_mprj_xfer = 1;
         while (reg_mprj_xfer == 1);
 
-	// Configure All LA probes as inputs to the cpu 
+	// Configure All LA probes as inputs to the cpu
 	reg_la0_oenb = reg_la0_iena = 0x00000000;    // [31:0]
 	reg_la1_oenb = reg_la1_iena = 0x00000000;    // [63:32]
 	reg_la2_oenb = reg_la2_iena = 0x00000000;    // [95:64]
 	reg_la3_oenb = reg_la3_iena = 0x00000000;    // [127:96]
 
 	// Flag start of the test
-	reg_mprj_datal = 0x00ff0000;
+	reg_mprj_datah = 0x00000018;
+	reg_mprj_datal = 0x00000000;
 
-	// Configure LA[96] LA[97] as outputs from the cpu
-	reg_la3_oenb = reg_la3_iena = 0x00000003;
+	// Configure LA[126] and LA[127] as outputs from the cpu
+	reg_la3_oenb = reg_la3_iena = 0xc0000000;
 
 	// Set clk & reset to one
-	reg_la3_data = 0x00000003;
+	reg_la3_data = 0xc0000000;
+
+	// DELAY
+        for (i=0; i<5; i=i+1) {}
 
 	// Toggle clk & de-assert reset
-	/*for (i=0; i<11; i=i+1) {
+	for (i=0; i<11; i=i+1) {
 		clk = !clk;
 		reg_la3_data = 0x00000000 | clk;
-	}*/
+	}
+}
 
-	////////////////
-	// Start test
+function pass(int value) {
+	reg_mprj_datah = 0x00000019;
+	reg_mprj_datal = value;
+}
 
-	const int EBREAK = 0x00100073;
-	const int ECALL = 0x00000073;
-
-	const int romSize = 1024;
-	const int romAddress = 0x00000400;
-	const int[romSize] rom = [
-		// addi r1, r0, 65
-	        0x02100093,  // addi r1, r0, 65
-
-		// assert r1 == 65
-	        0x02100f93,  // addi r31, r0, 65
-	        0x001f8463,  // beq r1, r31, 4
-	        0x00000f93,  // addi r31, r0, 5000
-	        EBREAK,  // ebreak
-
-		// end of program
-	        0x00000f93,  // addi r31, r0, 2000
-	        ECALL,  // ecall
-	];
-
-	const int ramSize = 1024;
-	const int ramAddress = 0x00000800;
-	int[256] ram;
-
-	const int registerFileAddress = 0x00000880;
-	int[128] registerFile;
-
-	const int diskAddress = 0x00000900;
-	int[64] disk;
-
-	const int networkInterfaceAddress = 0x00000940;
-	int[64] networkInterface;
-
-
-	int address;
-	int dataIn;
-	int transactionBegin;
-	int writeEnable;
-	int writeMask;
-
-	int dataOut;
-	int transactionEnd;
-
-	int instructionFetch = 0;
-
-        while (1){
-		// toggle clk 1 full cycle
-		clk = !clk;
-		reg_la3_data = 0x00000000 | clk;
-		clk = !clk;
-		reg_la3_data = 0x00000000 | clk;
-
-		// read signals
-		address = reg_la0_data_in;
-		dataIn = reg_la1_data_in;
-		transactionBegin = reg_la2_data_in & 0x1;
-		writeEnable = reg_la2_data_in >> 1 & 0x1;
-		writeMask = reg_la2_data_in >> 2 & 0xf;
-
-		if(transactionBegin) {
-			instructionFetch = address >= romAddress && address < romAddress + romSize;
-			if(instructionFetch) {
-				dataout = rom[address - romAddress];
-			}
-			else if(address >= ramAddress && address < ramAddress + ramSize) {
-				if(writeEnable) {
-					ram[address - ramAddress] = (writeMask & 0x8) ? dataIn & 0xff000000 : 0 |
-					(writeMask & 0x4) ? dataIn & 0x00ff0000 : 0 |
-					(writeMask & 0x2) ? dataIn & 0x0000ff00 : 0 |
-					(writeMask & 0x1) ? dataIn & 0x000000ff : 0;
-				else {
-					dataOut = ram[address - ramAddress];
-				}
-			}
-			transactionEnd = 1;
-
-			if(instructionFetch && dataOut == EBREAK) {
-				reg_mprj_datal = 0xc0000000 | (address & 0x3fffffff);
-                        	break;
-			}
-			if(instructionFetch && dataOut == ECALL) {
-				reg_mprj_datal = 0x80000000 | (address & 0x3fffffff);
-                        	break;
-			}
-
-	                reg_la0_data = dataOut;
-	                reg_la1_data = transactionEnd;
-	        }
-        }
+function fail(int value) {
+	reg_mprj_datah = 0x0000001a;
+	reg_mprj_datal = value;
 }
