@@ -18,22 +18,22 @@ set ::env(STD_CELL_LIBRARY) "sky130_fd_sc_hd"
 
 set script_dir [file dirname [file normalize [info script]]]
 
-set ::env(DESIGN_NAME) rvref
+set ::env(DESIGN_NAME) cpu
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/../../verilog/rtl/cpu/rtl.v"
+	$script_dir/../../verilog/rtl/cpu.v"
 
 set ::env(DESIGN_IS_CORE) 0
 
 set ::env(CLOCK_PORT) "clk"
-set ::env(CLOCK_NET) "rvref.clk"
+set ::env(CLOCK_NET) "cpu.clk"
 set ::env(CLOCK_PERIOD) "20"
 
 set ::env(FP_SIZING) absolute
 set ::env(DIE_AREA) "0 0 500 500"
 
-set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
+#set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
 #set ::env(PL_BASIC_PLACEMENT) 1
 set ::env(PL_TARGET_DENSITY) 0.45
